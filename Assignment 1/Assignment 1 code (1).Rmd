@@ -1,0 +1,73 @@
+---
+title: "Assignment 1"
+author: "Bhavika Dobanaboina"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+library(readr)
+library(dplyr)
+
+#Reading the data:
+grocery_data <-read_csv("Dataset.csv")
+
+#Printing Number of Columns
+ncol(grocery_data) 
+
+#printing number of rows 
+nrow(grocery_data)
+
+#printing datatypes of all variables 
+str(grocery_data)
+
+
+```
+
+
+```{r}
+#quantitative variables
+numerical_variables<-grocery_data[c(5,11,12,13,14,15)]
+
+# categorical variables
+category_variables<-grocery_data[c(7:10)]
+
+# printing descriptive statistics for quantitative variable
+summary(numerical_variables) 
+
+#printing descriptive statistics for categorical variable
+
+pivot_table<-table(category_variables$`Product Category`)
+pivot_table
+
+pivot_table1<-table(category_variables$`Sub Category`)
+pivot_table1
+
+#transforming variables
+
+filter(category_variables,category_variables$`Product Category` =="Clothing")
+
+#plotting one quantitative variable
+
+hist(numerical_variables$Revenue)
+barplot(pivot_table1)
+
+# plotting scatter plot
+
+plot(x=grocery_data$Cost,y=grocery_data$Revenue,main ="Scatterplot")
+
+
+```
+
+
+
+
+
+
+

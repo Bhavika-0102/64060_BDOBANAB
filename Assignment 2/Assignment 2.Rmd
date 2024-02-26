@@ -1,0 +1,192 @@
+---
+title: "Assignment-2"
+author: "Bhavika"
+date: "2024-02-26"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(readr)
+library(caret)
+library(class)
+```
+
+
+```{r}
+Data<-read_csv("UniversalBank.csv")
+head(Data)
+```
+
+```{r}
+
+#converting personal loan to factor 
+Data$Personal_Loan <-as.factor(Data$Personal_Loan)
+class(Data$Personal_Loan)
+
+#creating dummy variables
+education_1 <- ifelse(Data$Education==1,"1","0")
+education_2 <- ifelse(Data$Education==2,"1","0")
+education_3 <- ifelse(Data$Education==3,"1","0")
+
+#combining dummy variables and original variables 
+Data <- cbind(Data,education_1,education_2,education_3)# cbind is used for combined the data  
+head(Data)
+
+#Removing education,Id and Zip Code variables
+Data <-Data[-c(1,5,8)]
+
+```
+
+
+```{r}
+#Normalization 
+norm_model <- preProcess(Data[,-(6:9)],method = c('scale','center'))
+Data_normalized <- predict(norm_model,Data)
+head(Data_normalized)
+
+```
+
+
+```{r}
+
+#Creating Test Data 
+TestData<-data.frame(Age=40,Experience=10,Income=84,Family=2,CCAvg=2,Mortgage=0,SecuritiesAccount=0,CDAccount=0,Online=   1,CreditCard=1,Education_1= 0,Education_2=1,Education_3=0)
+
+#Normalizing Test Data
+TestData_normalized <- predict(norm_model,TestData)
+View(TestData_normalized)
+
+```
+
+```{r}
+
+#Partition the data into training (60%) and validation (40%) sets.
+spilt<-createDataPartition(Data_normalized$Personal_Loan,p=0.6, list=FALSE)
+Training<-Data_normalized[spilt,]
+validation<-Data_normalized[-spilt,] #(-) is used balance amount of total amount
+
+
+
+```
+
+
+```{r}
+#Building a KNN Model
+
+Train_Predictor<-Training[,-7]
+Train_label<- Training[,7]
+
+
+Validation_Predictor<-validation[,-7]
+Validation_label<- validation[,7]
+
+
+KNN_Model<-knn(Train_Predictor,TestData_normalized,cl=Train_label,k=1)
+
+KNN_Model
+
+#As the value is 0, customer in the test data will not accept the Personal Loan
+```
+
+
+```{r}
+#2. Finding the best choice of K
+
+set.seed(2873)
+
+searchGrid<- expand.grid(k=seq(1:10))
+
+model_new<-train(Personal_Loan~Age+Experience+Income+Family+CCAvg+Mortgage+Securities_Account+CD_Account+Online+CreditCard+education_1+education_2+education_3,
+                 data=Training,
+                 method="knn",
+                 tuneGrid=searchGrid)
+
+model_new
+
+best_k<-model_new$bestTune[[1]]
+
+plot(model_new)
+```
+
+```{r}
+#3.Confusion Matrix
+
+Prediction_Model<-predict(model_new,validation[,-7])
+
+confusionMatrix(Prediction_Model,Validation_label)
+
+
+```
+
+```{r}
+
+#4
+
+best_k_model<-knn(Train_Predictor,TestData_normalized,cl=Train_label,k=best_k)
+
+best_k_model
+
+#Conclusion: Customer will not accept the loan.
+
+```
+
+```{r}
+#5.
+#Repartition the data into training, validation, and test sets (50% :    30% : 20%)
+NewSplit <- createDataPartition(Data_normalized$Personal_Loan,p=0.5,list=FALSE)
+NewTraining<-Data_normalized[NewSplit,]
+Remaining <- Data_normalized[-NewSplit,]
+
+SplitRemaining <- createDataPartition(Remaining$Personal_Loan,p=0.6,list=FALSE)
+Newvalidation<-Remaining[SplitRemaining,]
+NewTest <- Remaining[-SplitRemaining,]
+
+```
+
+```{r}
+NewTrain_Predictor<-NewTraining[,-7]
+NewValidation_Predictor<-Newvalidation[,-7]
+NewTest_Predictor<-NewTest[,-7]
+
+
+NewTrain_label<- NewTraining[,7]
+NewValidation_label<- Newvalidation[,7]
+NewTest_label<- NewTest[,7]
+
+NewKNN_Training<-knn(NewTrain_Predictor,NewTrain_Predictor,cl=NewTrain_label,k=best_k)
+
+NewKNN_Validation<-knn(NewTrain_Predictor,NewValidation_Predictor,cl=NewTrain_label,k=best_k)
+
+NewKnn_Test<-knn(NewTrain_Predictor,NewTest_Predictor,cl=NewTrain_label,k=best_k)
+
+
+#Confusion Matrix of Training:
+
+confusionMatrix(NewKNN_Training,NewTrain_label)
+
+#Confusion Matrix of Validation:
+
+confusionMatrix(NewKNN_Validation,NewValidation_label)
+
+#Confusion Matrix of Test:
+
+confusionMatrix(NewKnn_Test,NewTest_label)
+```
+
+#Interpretation and Conclusion:
+
+#While comparing the confusion Matrix of the test data with that of the training and validation data, we can exclude training data as the accuracy is 100% which is because the model has seen the data already, so it classified every customer of accepting/rejecting the personal loan offer accurately.
+
+#By comparing Accuracy of Validation and Test data from the confusion Matrix, it can be noticed that the Validation data has better accuracy of 94.1 compared to test data accuracy of 93.4
+
+#When comparing other metrics like sensitivity and specificity, model of the validation data performed better with 98.1 and 56.2 respectively.
+
+#Even though both Validation and Test data is unseen to the model, it has performed better on the Validation due to the more number of observations which helps model to identify customers accurately.
+

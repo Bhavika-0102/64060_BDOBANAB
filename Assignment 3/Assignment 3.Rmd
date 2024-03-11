@@ -1,0 +1,118 @@
+---
+title: "FML Assignment 3"
+author: "Bhavika"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+library(readr)
+
+Data<-read.csv("UniversalBank.csv")
+head(Data)
+
+
+```
+
+```{r}
+#Converting Personal Loan, Online, Credit Card
+Data$Personal.Loan<-as.factor(Data$Personal.Loan)
+Data$Online<-as.factor(Data$Online)
+Data$CreditCard<-as.factor(Data$CreditCard)
+
+```
+
+```{r}
+#Data Partitioning into Training and Validation set with 60% and 40%
+library(caret)
+set.seed(3862)
+Split_data<- createDataPartition(Data$Personal.Loan,p=.6,list=FALSE,times=1)
+Training<-Data[Split_data,]
+Validation<-Data[-Split_data,]
+
+```
+
+
+```{r}
+
+#Normalizing the Data:
+
+Normalization<-preProcess(Training[,-c(10,13,14)],method=c("center","scale"))
+Training_Normalized_Data<-predict(Normalization,Training)
+Validation_Normalized_Data<-predict(Normalization,Validation)
+
+```
+
+
+**A. Create a pivot table for the training data with Online as a column variable, CC as a row variable, and Loan as a secondary row variable:**
+
+```{r}
+
+Table_1<-ftable(Training_Normalized_Data[,c(14,10,13)])
+Table_1
+
+head(Table_1)
+
+prop_table1<-prop.table(Table_1)
+prop_table1
+```
+
+**B. The probability of customer accepting loan and using credit card plus being an online banking user = P(Loan = 1|CreditCard = 1, Online = 1) = 39/(39+491) = 0.0735**
+
+
+**C. Creating a Pivot table having Loan as a row variable and CreditCard as column Variable:**
+
+```{r}
+Table2 <- table(Training_Normalized_Data$Personal.Loan,Training_Normalized_Data$CreditCard)
+Table2
+
+
+Table3 <- table(Training_Normalized_Data$Personal.Loan,Training_Normalized_Data$Online)
+Table3
+```
+
+*D. (i)P(CC=1|Loan=1) = 77/(211+77) = 0.267*
+
+*D. (ii.)P(Online=1| Loan=1) = 167/(121+167) =0.5798  *
+
+*D. (iii) P(Loan =1):*
+```{r}
+table_loan <- table(Training_Normalized_Data$Personal.Loan)
+table_loan
+```
+
+
+*P(Loan=1)=288/(288+2712) = 0.096*
+
+*D. (iv.)P(CC=1|Loan=0)= 812/(812+1900) =0.2994*
+
+*D. (v.)P(Online=1|Loan=0)= 1602/(1602+1110) = 0.590*
+
+*D. (vi.) P(Loan=0)=2712/(2712+288)=0.904*
+
+
+**E. Naive Bayes probablitity: P(Loan = 1|CC = 1, Online = 1)**
+
+*(0.267*0.579*0.096)/(0.267*0.579*0.096)+(0.299*0.590*0.904) = 0.014/0.014+0.159=0.0809*
+
+**F. Comparison of P(Loan=1|CC=1,Online=1)**
+*Upon comparing the above computed Naive Bayes Probability with the value obtained in B,it can be observed that the probability computed through Naive Bayes is slightly higher than the probability computed through frequency table.*
+
+
+**G. Naive Bayes Probablity:**
+
+```{r}
+library(e1071)
+nb_model<-naiveBayes(Personal.Loan~Online+CreditCard,data=Training_Normalized_Data)
+nb_model
+
+```
+
+*This value is equivalent to the probability obtained in E.*

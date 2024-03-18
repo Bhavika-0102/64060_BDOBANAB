@@ -1,0 +1,180 @@
+---
+title: "Assignment 4"
+author: "Bhavika"
+date: "2024-03-13"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+
+```
+
+```{r}
+
+library(readr)
+library(tidyverse)
+library(factoextra)
+library(ISLR)
+library(caret)
+library(cluster)
+```
+
+
+```{r}
+pharmaceuticals_data<-read_csv("Pharmaceuticals.csv")
+head(pharmaceuticals_data)
+
+```
+
+```{r}
+#Print Number of Columns
+ncol(pharmaceuticals_data) 
+#print number of rows 
+nrow(pharmaceuticals_data)
+
+#1.identify the numerical variables (1 to 9) to cluster the 21 firms
+numerical_vars <- pharmaceuticals_data[, 3:11]
+head(numerical_vars,11)
+
+#Checking the % of missing values in each column
+
+missing_values <- (colMeans(is.na(pharmaceuticals_data))*100)
+
+head(missing_values,11)
+
+```
+*There are no missing values in the data.*
+
+
+**#Normalizing the Data:**
+```{r}
+
+preprocess_data <- preProcess(numerical_vars, method = c("center", "scale"))
+normalized_data <- predict(preprocess_data, numerical_vars)
+
+```
+
+**Checking the optimal number of Clusters using Elbow method and Silhouette Method:**
+```{r}
+
+set.seed(7895)
+fviz_nbclust(normalized_data,kmeans,method="wss")
+
+```
+
+*In elbow method, Optimal value of k is 2.*
+
+```{r}
+fviz_nbclust(normalized_data,kmeans,method="silhouette")
+
+```
+
+*In Silhouette Method, Optimal Value of k is 5.*
+
+
+*As the optimal number of clusters obtained from both Elbow method and Silhouette method is different, we will run the knn model using both K values and based on the formation of clusters, we will decide which optimal K value is to considered for further analysis.*
+
+
+**#Applying k-Means clustering:**
+```{r}
+
+k2<-kmeans(normalized_data,centers=2)
+k2
+
+k5<-kmeans(normalized_data,centers=5)
+k5
+
+```
+
+
+#Plotting the clusters:
+
+```{r}
+
+fviz_cluster(k2,pharmaceuticals_data[,(3:11)],main="2 clusters")
+
+
+fviz_cluster(k5,pharmaceuticals_data[,(3:11)],main="5 clusters")
+```
+
+*When clusters with k=5 is plotted, clusters are overlapping. *
+
+*On the other hand, the 2 clusters formed in the first plot are away from each other and also has divided all 21 firms into 2 groups. Hence, considering k=2 as the optimal number of clusters.*
+
+```{r}
+
+#Assigning the cluster to each firm using CBIND
+New_data<-cbind(numerical_vars,k2$cluster)
+View(New_data)
+
+
+```
+
+**Finding Mean within each cluster to interpret the clusters:**
+```{r}
+
+mean_k2 <- numerical_vars %>% mutate(Cluster = k2$cluster) %>% group_by(Cluster) %>% summarise_all("mean")
+mean_k2
+
+```
+
+***Question 2: Interpreting the clusters as per the numerical variables:***
+
+*Based on the two clusters formed, Market cap of companies in the first cluster is ranging between 34 billion dollars to 199 billion dollars, whereas companies in cluster 2 has an average market cap of 14 billion dollars. This indicates that the companies in first cluster are well-established, and according to market cap, it will be safer to invest in cluster 1 companies.*
+
+*When PE ratio of companies in both clusters are analyzed, cluster 1 has a better PE ratio with an average of 20.95 compared with an average of 30.42 of companies in second cluster.*
+
+*When Return of Equity (ROE) and Return on Assets (ROA), companies in cluster 1 has better averages then companies in second cluster.*
+
+*Surprisingly, companies in second cluster has better average of Revenue growth in comparision to companies in first luster. This could be possible as companies with small market cap seems to grow faster.*
+
+*Net Profit Margin of companies in cluster 1 is twice than compared to cluster 2. This indicates that the first cluster companies are more profitable and has succesful businesses than second cluster companies.*
+
+*In overall comparision, I would recommend to invest in first cluster as those companies have bigger market cap, and better PE_RATIO,ROE,ROA,Asset Turnover and Net Profit Margin.*
+
+
+***Question-3: Finding if there is a pattern with respect to categorical and Numerical variables:***
+
+```{r}
+
+plot <- pharmaceuticals_data[12:14] %>% mutate(Clusters=k2$cluster)
+
+
+library(ggplot2)
+
+library(esquisse)
+
+ggplot(plot, mapping = aes(factor(Clusters), fill =Median_Recommendation))+geom_bar(position='dodge')+labs(x ='Clusters')
+
+ggplot(plot, mapping = aes(factor(Clusters),fill = Location))+geom_bar(position = 'dodge')+labs(x ='Clusters')
+
+ggplot(plot, mapping = aes(factor(Clusters),fill = Exchange))+geom_bar(position = 'dodge')+labs(x ='Clusters')
+
+
+```
+
+
+**Analysis based on the plots of categorical variables**
+
+*Median Recommendation: It can be observed from above plots that majority of the firms in cluster 1 are under "Hold" recommendation whereas firms in cluster 2 are under "Modern buy" recommendation*
+
+*3 firms in cluster 1 are in Moderate buy recommendation and 2 firms are in moderate sell recommendation.* 
+
+*In cluster 2, 3 firms are in Hold, 2 are in Moderate sell and 1 is in strong buy.*
+
+*Location: Highest number of firms in both the clusters are from the US*
+
+*Exchange: Majority of the firms in both clusters are listed under NYSE, in fact, all firms in cluster 1 are listed under NYSE*
+
+
+***QUESTION 4: Names of the Clusters:***
+
+*Cluster 1: Low Risk Investments.*
+
+*Cluster 2: High Risk Investments.*
+
